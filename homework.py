@@ -33,10 +33,6 @@ HOMEWORK_VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-ENVIRONMENT_VARIABLES_ARE_MISSING = (
-    'Отсутствует одна или несколько переменных окружения.'
-)
-
 PHRASES = {
     'miss_env_variables': 'Отсутствуют переменная/ые окружения.',
     'api_response_error': 'Ошибка запроса к API',
@@ -48,22 +44,6 @@ PHRASES = {
     'no_hw_status': 'Отсутствует информация о домашней работе.',
     'unknown_hw_status': 'Неизвестный статус домашней работы',
 }
-
-API_RESPONSE_ERROR = 'Ошибка запроса к API'
-
-NOT_DICT = 'не является словарем.'
-
-NO_HW_STATUS = 'Отсутствует информация о домашней работе.'
-
-NO_KEY = 'не является списком.'
-
-NOT_STRING = 'Ответ API не содержит homeworks ключа.'
-
-SEND_MESSAGE_ERROR = 'Ошибка отправки сообщения'
-
-STATUS_RESPONSE = 'Статус ответа на запрос'
-
-UNKNOWN_HW_STATUS = 'Неизвестный статус домашней работы'
 
 
 def check_tokens():
