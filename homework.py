@@ -102,9 +102,9 @@ def check_response(response):
         raise TypeError(PHRASES.get('no_key'))
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
-        logging.error(f'{homeworks} {PHRASES.get('not_list')}')
-        send_message(f'{homeworks} {PHRASES.get('not_list')}')
-        raise TypeError(f'{homeworks} {PHRASES.get('not_list')}')
+        logging.error(f'{homeworks} {PHRASES.get("not_list")}')
+        send_message(f'{homeworks} {PHRASES.get("not_list")}')
+        raise TypeError(f'{homeworks} {PHRASES.get("not_list")}')
     logging.debug('Ответ API соответствует критериям')
     return True
 
@@ -119,9 +119,9 @@ def parse_status(homework):
         raise ValueError(PHRASES.get('no_hw_status'))
     verdict = HOMEWORK_VERDICTS.get(status)
     if not verdict:
-        logging.error(f'{PHRASES.get('unknown_hw_status')}: {status}')
-        send_message(f'{PHRASES.get('unknown_hw_status')}: {status}')
-        raise ValueError(f'{PHRASES.get('unknown_hw_status')}: {status}')
+        logging.error(f'{PHRASES.get("unknown_hw_status")}: {status}')
+        send_message(f'{PHRASES.get("unknown_hw_status")}: {status}')
+        raise ValueError(f'{PHRASES.get("unknown_hw_status")}: {status}')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
