@@ -1,7 +1,9 @@
+import json
 import logging
 import os
-import requests
 import time
+
+import requests
 
 from dotenv import load_dotenv
 from telebot import TeleBot
@@ -10,12 +12,26 @@ import exceptions
 
 load_dotenv()
 
+# Получаем текущую рабочую директорию
+current_dir = os.getcwd()
+
+# Формируем полный путь к файлу лога
+log_file_path = os.path.join(current_dir, 'C:\\Dev\\homework_bot', 'main.log')
+
 logging.basicConfig(
     level=logging.DEBUG,
-    filename='main.log',
+    filename=log_file_path,
     filemode='w',
     format="%(asctime)s, %(levelname)s, %(message)s",
 )
+
+logger = logging.getLogger(__name__)
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s, %(levelname)s, %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -34,120 +50,148 @@ HOMEWORK_VERDICTS = {
 }
 
 PHRASES = {
-    'miss_env_variables': 'Отсутствуют переменная/ые окружения.',
-    'api_response_error': 'Ошибка запроса к API',
-    'not_dict': 'не является словарем.',
-    'no_key': 'Ответ API не содержит homeworks ключа.',
-    'not_list': 'не является списком.',
-    'send_message_error': 'Ошибка отправки сообщения',
-    'status_response': 'Статус ответа на запрос',
-    'no_hw_status': 'Отсутствует информация о домашней работе.',
-    'unknown_hw_status': 'Неизвестный статус домашней работы',
+    'MISS_PRACTICUM_TOKEN': 'Отсутствует PRACTICUM_TOKEN',
+    'MISS_TELEGRAM_TOKEN': 'Отсутствует TELEGRAM_TOKEN',
+    'MISS_TELEGRAM_CHAT_ID': 'Отсутствует TELEGRAM_CHAT_ID',
+    'API_RESPONSE_ERROR': 'Ошибка запроса к API',
+    'NOT_DICT': 'не является словарем.',
+    'NO_KEY_HOMEWORKS': 'Ответ API не содержит "homeworks" ключа.',
+    'NO_KEY_CURRENT_DATE': 'Ответ API не содержит "current_date" ключа.',
+    'NOT_LIST': 'не является списком.',
+    'NOT_INT': 'не является целым числом.',
+    'SEND_MESSAGE_ERROR': 'Ошибка отправки сообщения',
+    'STATUS_RESPONSE': 'Статус ответа на запрос',
+    'NO_HW_STATUS': 'Отсутствует информация о домашней работе.',
+    'UNKNOWN_HW_STATUS': 'Неизвестный статус домашней работы',
+    'FOREIGN_KEY': 'ключ не найден в словаре "homework"',
+    'CAN_NOT_DECODE_JSON': 'Ошибка декодирования JSON',
 }
 
 
 def check_tokens():
     """Проверка доступности переменных окружения."""
-    if not all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
-        logging.critical(PHRASES.get('miss_env_variables'))
-        raise exceptions.TokenMissError(PHRASES.get('miss_env_variables'))
-    return True
+    if not PRACTICUM_TOKEN:
+        logger.critical(PHRASES.get('MISS_PRACTICUM_TOKEN'))
+        raise exceptions.TokenMissError(PHRASES.get('MISS_PRACTICUM_TOKEN'))
+    if not TELEGRAM_TOKEN:
+        logger.critical(PHRASES.get('MISS_TELEGRAM_TOKEN'))
+        raise exceptions.TokenMissError(PHRASES.get('MISS_TELEGRAM_TOKEN'))
+    if not TELEGRAM_CHAT_ID:
+        logger.critical(PHRASES.get('MISS_TELEGRAM_CHAT_ID'))
+        raise exceptions.TokenMissError(PHRASES.get('MISS_TELEGRAM_CHAT_ID'))
 
 
 def send_message(bot, message):
     """Отправка сообщения в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logging.debug(f'Успешно отправлено сообщение: {message}')
     except Exception as error:
-        logging.error(f'{PHRASES.get("send_message_error")}: {error}')
+        logger.error(f'{PHRASES.get("SEND_MESSAGE_ERROR")}: {error}')
+    else:
+        logger.debug(f'Успешно отправлено сообщение: {message}')
 
 
 def get_api_answer(timestamp):
     """Делаем запрос к API и возвращаем ответ в формате Python."""
     try:
-        logging.debug(f'Запрос к API: {ENDPOINT}')
         response = requests.get(
             ENDPOINT, headers=HEADERS, params={'from_date': timestamp}
         )
         if response.status_code != 200:
-            logging.error(
-                f'{PHRASES.get("status_response")} {response.status_code}'
-            )
-            send_message(
-                f'{PHRASES.get("status_response")} {response.status_code}'
-            )
             raise requests.RequestException(
-                f'{PHRASES.get("status_response")} {response.status_code}'
+                f'{PHRASES.get("STATUS_RESPONSE")} {response.status_code}'
             )
-        response.raise_for_status()
-        logging.debug('Успешно получен JSON-ответ.')
-        return response.json()
+        logger.debug('Успешно получен JSON-ответ.')
+        response_json = response.json()
+    except json.JSONDecodeError as error:
+        logger.error(f'{PHRASES.get("CAN_NOT_DECODE_JSON")}: {error}')
+        send_message(f'{PHRASES.get("CAN_NOT_DECODE_JSON")} {error}')
+        raise
     except requests.RequestException(
-        f'{PHRASES.get("status_response")} {response.status_code}'
+        f'{PHRASES.get("STATUS_RESPONSE")} {response.status_code}'
     ) as error:
-        logging.error(f'{PHRASES.get("api_response_error")}: {error}')
-        send_message(f'{PHRASES.get("api_response_error")}: {error}')
+        logger.error(f'{PHRASES.get("API_RESPONSE_ERROR")}: {error}')
+        send_message(f'{PHRASES.get("API_RESPONSE_ERROR")}: {error}')
+    return response_json
 
 
 def check_response(response):
     """Проверка ответа API на соответствие документации."""
     if not isinstance(response, dict):
-        logging.error(f'{response} {PHRASES.get("not_dict")}')
-        send_message(f'{response} {PHRASES.get("not_dict")}')
-        raise TypeError(f'{response} {PHRASES.get("not_dict")}')
+        logger.error(f'{response} {PHRASES.get("NOT_DICT")}')
+        send_message(f'{response} {PHRASES.get("NOT_DICT")}')
+        raise TypeError(f'{response} {PHRASES.get("NOT_DICT")}')
     if 'homeworks' not in response:
-        logging.error(PHRASES.get('no_key'))
-        send_message(PHRASES.get('no_key'))
-        raise TypeError(PHRASES.get('no_key'))
+        logger.error(PHRASES.get('NO_KEY_HOMEWORKS'))
+        send_message(PHRASES.get('NO_KEY_HOMEWORKS'))
+        raise TypeError(PHRASES.get('NO_KEY_HOMEWORKS'))
+    if 'current_date' not in response:
+        logger.error(PHRASES.get('NO_KEY_CURRENT_DATE'))
+        send_message(PHRASES.get('NO_KEY_CURRENT_DATE'))
+        raise TypeError(PHRASES.get('NO_KEY_CURRENT_DATE'))
+    current_date = response.get('current_date')
+    if not isinstance(current_date, int):
+        logger.error(f'{current_date} {PHRASES.get("NOT_INT")}')
+        send_message(f'{current_date} {PHRASES.get("NOT_INT")}')
+        raise TypeError(f'{current_date} {PHRASES.get("NOT_INT")}')
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
-        logging.error(f'{homeworks} {PHRASES.get("not_list")}')
-        send_message(f'{homeworks} {PHRASES.get("not_list")}')
-        raise TypeError(f'{homeworks} {PHRASES.get("not_list")}')
-    logging.debug('Ответ API соответствует критериям')
-    return True
+        logger.error(f'{homeworks} {PHRASES.get("NOT_LIST")}')
+        send_message(f'{homeworks} {PHRASES.get("NOT_LIST")}')
+        raise TypeError(f'{homeworks} {PHRASES.get("NOT_LIST")}')
+    logger.debug('Ответ API соответствует критериям')
 
 
 def parse_status(homework):
     """Извлечение статуса домашней работы."""
     homework_name = homework.get('homework_name')
     status = homework.get('status')
-    if not homework_name or not status:
-        logging.error(PHRASES.get('no_hw_status'))
-        send_message(PHRASES.get('no_hw_status'))
-        raise ValueError(PHRASES.get('no_hw_status'))
+    if not homework_name:
+        homework_name_key = 'homework_name'
+        logger.error(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        send_message(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        raise KeyError(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+    if not status:
+        status_name_key = 'status'
+        logger.error(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        send_message(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        raise KeyError(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
     verdict = HOMEWORK_VERDICTS.get(status)
     if not verdict:
-        logging.error(f'{PHRASES.get("unknown_hw_status")}: {status}')
-        send_message(f'{PHRASES.get("unknown_hw_status")}: {status}')
-        raise ValueError(f'{PHRASES.get("unknown_hw_status")}: {status}')
+        logger.error(f'{PHRASES.get("UNKNOWN_HW_STATUS")}: {status}')
+        send_message(f'{PHRASES.get("UNKNOWN_HW_STATUS")}: {status}')
+        raise KeyError(f'{PHRASES.get("UNKNOWN_HW_STATUS")}: {status}')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
     """Основная логика работы бота."""
-    if not check_tokens():
-        return
+    check_tokens()
 
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
+    last_message = None
 
     while True:
         try:
             response = get_api_answer(timestamp)
-            if check_response(response):
-                homeworks = response.get('homeworks')
-                if homeworks:
-                    for homework in homeworks:
-                        message = parse_status(homework)
-                        if message:
-                            send_message(bot, message)
+            check_response(response)
+            homeworks = response.get('homeworks')
+            if homeworks:
+                message = parse_status(homeworks[-1])
+                if last_message != message:
+                    send_message(bot, message)
+                    last_message = message
             timestamp = response.get('current_date', timestamp)
-            time.sleep(RETRY_PERIOD)
+        except requests.RequestException as error:
+            logger.error(f'{PHRASES.get("API_RESPONSE_ERROR")}: {error}')
+            send_message(bot, f'{PHRASES.get("API_RESPONSE_ERROR")}: {error}')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
+            if last_message != message:
+                send_message(bot, message)
+                last_message = message
+        finally:
             time.sleep(RETRY_PERIOD)
 
 
