@@ -148,14 +148,14 @@ def parse_status(homework):
     status = homework.get('status')
     if not homework_name:
         homework_name_key = 'homework_name'
-        logger.error(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
-        send_message(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
-        raise KeyError(f'"{homework_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        logger.error(f'"{homework_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
+        send_message(f'"{homework_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
+        raise KeyError(f'"{homework_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
     if not status:
         status_name_key = 'status'
-        logger.error(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
-        send_message(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
-        raise KeyError(f'"{status_name_key}" {PHRASES.get('FOREIGN_KEY')}.')
+        logger.error(f'"{status_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
+        send_message(f'"{status_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
+        raise KeyError(f'"{status_name_key}" {PHRASES.get("FOREIGN_KEY")}.')
     verdict = HOMEWORK_VERDICTS.get(status)
     if not verdict:
         logger.error(f'{PHRASES.get("UNKNOWN_HW_STATUS")}: {status}')
