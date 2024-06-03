@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -49,22 +50,22 @@ HOMEWORK_VERDICTS = {
 class Phrases:
     """Фразы для логирования."""
 
-    MISS_PRACTICUM_TOKEN = 'Отсутствует PRACTICUM_TOKEN',
-    MISS_TELEGRAM_TOKEN = 'Отсутствует TELEGRAM_TOKEN',
-    MISS_TELEGRAM_CHAT_ID = 'Отсутствует TELEGRAM_CHAT_ID',
-    API_RESPONSE_ERROR = 'Ошибка запроса к API',
-    NOT_DICT = 'не является словарем.',
-    NO_KEY_HOMEWORKS = 'Ответ API не содержит "homeworks" ключа.',
-    NO_KEY_CURRENT_DATE = 'Ответ API не содержит "current_date" ключа.',
-    NOT_LIST = 'не является списком.',
-    NOT_INT = 'не является целым числом.',
-    SEND_MESSAGE_ERROR = 'Ошибка отправки сообщения',
-    STATUS_RESPONSE = 'Статус ответа на запрос',
-    NO_HW_STATUS = 'Отсутствует информация о домашней работе.',
-    UNKNOWN_HW_STATUS = 'Неизвестный статус домашней работы',
-    FOREIGN_KEY = 'ключ не найден в словаре "homework"',
-    CAN_NOT_DECODE_JSON = 'Ошибка декодирования JSON',
-    LAST_MESSAGE = None,
+    MISS_PRACTICUM_TOKEN = 'Отсутствует PRACTICUM_TOKEN'
+    MISS_TELEGRAM_TOKEN = 'Отсутствует TELEGRAM_TOKEN'
+    MISS_TELEGRAM_CHAT_ID = 'Отсутствует TELEGRAM_CHAT_ID'
+    API_RESPONSE_ERROR = 'Ошибка запроса к API'
+    NOT_DICT = 'не является словарем.'
+    NO_KEY_HOMEWORKS = 'Ответ API не содержит "homeworks" ключа.'
+    NO_KEY_CURRENT_DATE = 'Ответ API не содержит "current_date" ключа.'
+    NOT_LIST = 'не является списком.'
+    NOT_INT = 'не является целым числом.'
+    SEND_MESSAGE_ERROR = 'Ошибка отправки сообщения'
+    STATUS_RESPONSE = 'Статус ответа на запрос'
+    NO_HW_STATUS = 'Отсутствует информация о домашней работе.'
+    UNKNOWN_HW_STATUS = 'Неизвестный статус домашней работы'
+    FOREIGN_KEY = 'ключ не найден в словаре "homework"'
+    CAN_NOT_DECODE_JSON = 'Ошибка декодирования JSON'
+    NO_NEW_HOMEWORKS = 'Новых результатов не обнаружено'
 
 
 def check_tokens():
@@ -85,14 +86,14 @@ def check_tokens():
 
 def send_message(bot, message):
     """Отправка сообщения в Telegram-чат."""
-    try:
-        if Phrases.LAST_MESSAGE != message:
+    if not hasattr(bot, 'last_message') or bot.last_message != message:
+        try:
             bot.send_message(TELEGRAM_CHAT_ID, message)
-            Phrases.LAST_MESSAGE = message
-    except telebot.apihelper.ApiException(f'{Phrases.SEND_MESSAGE_ERROR}'):
-        raise
-    else:
-        logger.debug(f'Успешно отправлено сообщение: {message}')
+            bot.last_message = message
+        except telebot.apihelper.ApiException as error:
+            logger.error(f'{Phrases.SEND_MESSAGE_ERROR} "{error}"')
+        else:
+            logger.debug(f'Успешно отправлено сообщение: {message}')
 
 
 def get_api_answer(timestamp):
@@ -106,12 +107,14 @@ def get_api_answer(timestamp):
                 f'{Phrases.STATUS_RESPONSE} {response.status_code}'
             )
         return response.json()
-    except exceptions.JsonDecodeError(f'{Phrases.CAN_NOT_DECODE_JSON}'):
-        raise
-    except exceptions.RequestError(
-        f'{Phrases.STATUS_RESPONSE} {response.status_code}'
-    ):
-        raise
+    except json.JSONDecodeError as error:
+        raise exceptions.JsonDecodeError(
+            f'{Phrases.CAN_NOT_DECODE_JSON} "{error}"'
+        )
+    except requests.RequestException as error:
+        raise exceptions.RequestError(
+            f'{Phrases.STATUS_RESPONSE} {response.status_code} "{error}"'
+        )
 
 
 def check_response(response):
@@ -130,7 +133,8 @@ def check_response(response):
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
         raise TypeError(f'{homeworks} {Phrases.NOT_LIST}')
-    logger.debug('Ответ API соответствует критериям')
+    if not homeworks:
+        logger.debug(Phrases.NO_NEW_HOMEWORKS)
 
 
 def parse_status(homework):
