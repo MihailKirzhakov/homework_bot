@@ -8,3 +8,11 @@ class RequestError(Exception):
 
 class JsonDecodeError(Exception):
     pass
+
+
+class CurrentDateKeyError(Exception):
+    pass
+
+
+class CurrentDateKeyTypeError(Exception):
+    pass

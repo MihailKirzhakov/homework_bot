@@ -121,10 +121,12 @@ def check_response(response):
     if 'homeworks' not in response:
         raise KeyError(Phrases.NO_KEY_HOMEWORKS)
     if 'current_date' not in response:
-        raise KeyError(Phrases.NO_KEY_CURRENT_DATE)
+        raise exceptions.CurrentDateKeyError(Phrases.NO_KEY_CURRENT_DATE)
     current_date = response.get('current_date')
     if not isinstance(current_date, int):
-        raise TypeError(f'{current_date} {Phrases.NOT_INT}')
+        raise exceptions.CurrentDateKeyTypeError(
+            f'{current_date} {Phrases.NOT_INT}'
+        )
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
         raise TypeError(f'{homeworks} {Phrases.NOT_LIST}')
@@ -163,6 +165,10 @@ def main():
                 message = parse_status(homeworks[-1])
                 send_message(bot, message)
             timestamp = response.get('current_date', timestamp)
+        except exceptions.CurrentDateKeyError as error:
+            logger.error(error)
+        except exceptions.CurrentDateKeyTypeError as error:
+            logger.error(error)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
