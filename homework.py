@@ -78,7 +78,7 @@ def check_tokens():
     }
     for token, phrase in tokens_to_check.items():
         if not token:
-            missing_tokens.append(phrase[0])
+            missing_tokens.append(phrase)
     if missing_tokens:
         logger.critical(', '.join(missing_tokens))
         raise exceptions.TokenMissError(', '.join(missing_tokens))
@@ -133,8 +133,6 @@ def check_response(response):
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
         raise TypeError(f'{homeworks} {Phrases.NOT_LIST}')
-    if not homeworks:
-        logger.debug(Phrases.NO_NEW_HOMEWORKS)
 
 
 def parse_status(homework):
@@ -163,7 +161,8 @@ def main():
     while True:
         try:
             response = get_api_answer(timestamp)
-            check_response(response)
+            if not check_response(response):
+                logger.debug(Phrases.NO_NEW_HOMEWORKS)
             homeworks = response.get('homeworks')
             if homeworks:
                 message = parse_status(homeworks[-1])
