@@ -53,19 +53,20 @@ class Phrases:
     MISS_PRACTICUM_TOKEN = 'Отсутствует PRACTICUM_TOKEN'
     MISS_TELEGRAM_TOKEN = 'Отсутствует TELEGRAM_TOKEN'
     MISS_TELEGRAM_CHAT_ID = 'Отсутствует TELEGRAM_CHAT_ID'
-    API_RESPONSE_ERROR = 'Ошибка запроса к API'
     NOT_DICT = 'не является словарем.'
     NO_KEY_HOMEWORKS = 'Ответ API не содержит "homeworks" ключа.'
     NO_KEY_CURRENT_DATE = 'Ответ API не содержит "current_date" ключа.'
     NOT_LIST = 'не является списком.'
     NOT_INT = 'не является целым числом.'
-    SEND_MESSAGE_ERROR = 'Ошибка отправки сообщения'
     STATUS_RESPONSE = 'Статус ответа на запрос'
-    NO_HW_STATUS = 'Отсутствует информация о домашней работе.'
     UNKNOWN_HW_STATUS = 'Неизвестный статус домашней работы'
     FOREIGN_KEY = 'ключ не найден в словаре "homework"'
     CAN_NOT_DECODE_JSON = 'Ошибка декодирования JSON'
     NO_NEW_HOMEWORKS = 'Новых результатов не обнаружено'
+    KEY_ERROR = 'Ошибка с ключом'
+    PROGRAMM_FAILURE = 'Сбой в работе программы'
+    SEND_MESSAGE_ERROR = 'Ошибка отправки сообщения'
+    SEND_MESSAGE_SUCCESS = 'Сообщение успешно отправлено'
 
 
 def check_tokens():
@@ -85,15 +86,23 @@ def check_tokens():
 
 
 def send_message(bot, message):
-    """Отправка сообщения в Telegram-чат."""
-    if not hasattr(bot, 'last_message') or bot.last_message != message:
-        try:
-            bot.send_message(TELEGRAM_CHAT_ID, message)
-            bot.last_message = message
-        except telebot.apihelper.ApiException as error:
-            logger.error(f'{Phrases.SEND_MESSAGE_ERROR} "{error}"')
-        else:
-            logger.debug(f'Успешно отправлено сообщение: {message}')
+    """Отправка сообщения в чат телеги."""
+    try:
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+    except telebot.apihelper.ApiException as error:
+        message = f'{Phrases.SEND_MESSAGE_ERROR}: {error}'
+        logger.error(message)
+    else:
+        logger.debug(f'{Phrases.SEND_MESSAGE_SUCCESS}.')
+    return message
+
+
+def check_repeat_message(bot, message, last_message):
+    """Проверка на повтор сообщения."""
+    if last_message != message:
+        send_message(bot, message)
+        return message
+    return last_message
 
 
 def get_api_answer(timestamp):
@@ -157,23 +166,25 @@ def main():
 
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
+    last_message = None
 
     while True:
         try:
             response = get_api_answer(timestamp)
-            if not check_response(response):
-                logger.debug(Phrases.NO_NEW_HOMEWORKS)
+            check_response(response)
             homeworks = response.get('homeworks')
             if homeworks:
                 message = parse_status(homeworks[-1])
-                send_message(bot, message)
+                last_message = check_repeat_message(
+                    bot, message, last_message
+                )
+            else:
+                logger.debug(Phrases.NO_NEW_HOMEWORKS)
             timestamp = response.get('current_date', timestamp)
-        except exceptions.CurrentDateKeyError as error:
-            logger.error(error)
-        except exceptions.CurrentDateKeyTypeError as error:
-            logger.error(error)
+        except exceptions.CurrentDateError as error:
+            logger.error(f'{Phrases.KEY_ERROR}: {error}')
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
+            message = f'{Phrases.PROGRAMM_FAILURE}: {error}'
             logger.error(message)
             send_message(bot, message)
         finally:

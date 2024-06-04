@@ -10,9 +10,13 @@ class JsonDecodeError(Exception):
     pass
 
 
-class CurrentDateKeyError(Exception):
+class CurrentDateError(Exception):
     pass
 
 
-class CurrentDateKeyTypeError(Exception):
+class CurrentDateKeyError(CurrentDateError):
+    pass
+
+
+class CurrentDateKeyTypeError(CurrentDateError):
     pass
